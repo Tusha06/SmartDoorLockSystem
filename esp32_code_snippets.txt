@@ -1,0 +1,56 @@
+// --- BLYNK & WIFI SETTINGS ---
+#define BLYNK_TEMPLATE_ID   "TMPL3BPZEUS2-"
+#define BLYNK_TEMPLATE_NAME "DoorLock"
+#define BLYNK_AUTH_TOKEN    "jaom-iUT1r94Dv-_6AT0mc5awAAfG_vS"
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+
+const char* ssid     = "Tushar";
+const char* password = "12345678";
+
+// --- TELEGRAM SETTINGS ---
+#define BOT_TOKEN  "8975226283:AAHvIK8BnZb7X1Bzov2EVnnZGBv71QyL5aI"
+#define CHAT_ID    "1748309903"
+
+// --- PC COMMUNICATION SETTINGS ---
+// PC cha IP address — Step 2 madhe note kela hota
+#define PC_IP "192.168.1.5"
+#define PC_PORT 5000
+
+void notifyPC_PIR() {
+    WiFiClient client;
+    if (client.connect(PC_IP, PC_PORT)) {
+        client.println("POST /pir_trigger HTTP/1.1");
+        client.println("Host: " + String(PC_IP));
+        client.println("Content-Length: 0");
+        client.println("Connection: close");
+        client.println();
+        client.stop();
+    }
+}
+
+void notifyPC_DoorStatus(bool locked) {
+    WiFiClient client;
+    if (client.connect(PC_IP, PC_PORT)) {
+        String body = locked ? "{\"locked\":true}" : "{\"locked\":false}";
+        client.println("POST /door_status HTTP/1.1");
+        client.println("Host: " + String(PC_IP));
+        client.println("Content-Type: application/json");
+        client.println("Content-Length: " + String(body.length()));
+        client.println("Connection: close");
+        client.println();
+        client.print(body);
+        client.stop();
+    }
+}
+
+/*
+// ADD TO checkPIR()
+notifyPC_PIR();
+
+// ADD TO BLYNK_WRITE(V1)
+notifyPC_DoorStatus(isDoorLocked);
+*/
