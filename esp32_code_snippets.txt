@@ -16,7 +16,7 @@ const char* password = "12345678";
 #define CHAT_ID    "1748309903"
 
 // --- PC COMMUNICATION SETTINGS ---
-// PC cha IP address — Step 2 madhe note kela hota
+// IP address of the PC running the Python Flask server on your local network
 #define PC_IP "192.168.1.5"
 #define PC_PORT 5000
 

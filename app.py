@@ -10,7 +10,7 @@ import time
 
 app = Flask(__name__)
 
-# ===== TUMCHI DETAILS ITHEY BHARA =====
+# ===== CONFIGURATION & CREDENTIALS =====
 TELEGRAM_TOKEN    = "8975226283:AAHvIK8BnZb7X1Bzov2EVnnZGBv71QyL5aI"
 CHAT_ID           = "1748309903"
 KNOWN_FACES_DIR   = "known_faces"
@@ -21,7 +21,7 @@ UNLOCK_COOLDOWN   = 15    # Cooldown before next auto-unlock trigger (seconds)
 COOLDOWN          = 15    # Telegram alert cooldown for unknown faces (seconds)
 # =======================================
 
-# Known faces load karo
+# Load authorized/known face encodings from disk
 known_encodings = []
 known_names     = []
 
@@ -41,7 +41,7 @@ for filename in os.listdir(KNOWN_FACES_DIR):
 
 print(f"Total known faces: {len(known_names)}")
 
-# Webcam & Lock States
+# Camera & Lock State Management
 camera       = cv2.VideoCapture(0)
 door_locked  = True
 last_alert   = 0
@@ -49,7 +49,7 @@ last_unlock  = 0
 is_unlocking = False
 
 def send_telegram_photo(image, message):
-    """Telegram var photo pathvto"""
+    """Sends a captured image to Telegram with a text caption"""
     try:
         _, buffer = cv2.imencode('.jpg', image)
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
@@ -61,7 +61,7 @@ def send_telegram_photo(image, message):
         print(f"Telegram photo error: {e}")
 
 def send_telegram_message(message):
-    """Telegram var text message pathvto"""
+    """Sends a plain text alert message to Telegram"""
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         requests.post(url, data={"chat_id": CHAT_ID, "text": message}, timeout=10)
@@ -70,30 +70,30 @@ def send_telegram_message(message):
         print(f"Telegram text error: {e}")
 
 def trigger_auto_unlock(person_name, frame=None):
-    """Blynk API call karun door unlock karto aani nantar auto re-lock karto"""
+    """Unlocks the door via the Blynk Cloud API and automatically re-locks after a delay"""
     global door_locked, is_unlocking
     if is_unlocking:
         return
     is_unlocking = True
     try:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Recognized {person_name}! Sending UNLOCK command to Blynk...")
-        # 1. Unlock door (0 = Unlocked)
+        # 1. Send unlock command to Blynk (0 = Unlocked)
         url_unlock = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PIN}=0"
         requests.get(url_unlock, timeout=5)
         door_locked = False
         print("Door UNLOCKED successfully!")
 
-        # Telegram notification
+        # Send Telegram notification
         msg = f"Known face recognized: {person_name}!\nDoor UNLOCKED automatically.\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         if frame is not None:
             threading.Thread(target=send_telegram_photo, args=(frame, msg), daemon=True).start()
         else:
             threading.Thread(target=send_telegram_message, args=(msg,), daemon=True).start()
 
-        # 2. Wait before re-locking
+        # 2. Keep door unlocked for preset delay
         time.sleep(AUTO_RELOCK_DELAY)
 
-        # 3. Auto re-lock door (1 = Locked)
+        # 3. Send lock command to Blynk (1 = Locked)
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Auto re-locking door...")
         url_lock = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PIN}=1"
         requests.get(url_lock, timeout=5)
@@ -105,10 +105,10 @@ def trigger_auto_unlock(person_name, frame=None):
         is_unlocking = False
 
 def process_frame(frame):
-    """Face detection aani recognition"""
+    """Processes video frame for face detection, recognition, and auto-unlock triggers"""
     global last_alert, last_unlock, is_unlocking
 
-    # Resize for faster processing
+    # Resize frame for faster processing
     small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
     rgb   = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
 
@@ -116,7 +116,7 @@ def process_frame(frame):
     encodings  = face_recognition.face_encodings(rgb, locations)
 
     for (top, right, bottom, left), enc in zip(locations, encodings):
-        # Scale back up
+        # Scale back up to original frame dimensions
         top    *= 4
         right  *= 4
         bottom *= 4
@@ -129,7 +129,7 @@ def process_frame(frame):
             idx  = np.argmin(face_recognition.face_distance(known_encodings, enc))
             name = known_names[idx]
 
-        # Box draw karo
+        # Draw bounding box and name tag
         color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
         cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
         cv2.putText(frame, name, (left, top - 10),
@@ -138,12 +138,12 @@ def process_frame(frame):
         # Alert & Auto-Unlock logic
         now = time.time()
         if name != "Unknown":
-            # Known face detected -> Trigger auto door unlock
+            # Authorized person recognized -> Trigger automatic unlock
             if (now - last_unlock) > UNLOCK_COOLDOWN and not is_unlocking:
                 last_unlock = now
                 threading.Thread(target=trigger_auto_unlock, args=(name, frame.copy()), daemon=True).start()
         else:
-            # Unknown person -> Send Telegram alert if door is locked
+            # Unknown visitor detected -> Send Telegram alert with photo if door is locked
             if door_locked and (now - last_alert) > COOLDOWN:
                 last_alert = now
                 msg = f"Unknown person detected at door!\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -152,7 +152,7 @@ def process_frame(frame):
     return frame
 
 def generate_frames():
-    """Video stream generate karto"""
+    """Generates MJPEG video stream frames for the web dashboard"""
     while True:
         success, frame = camera.read()
         if not success:
@@ -165,7 +165,7 @@ def generate_frames():
                b'Content-Type: image/jpeg\r\n\r\n' +
                buffer.tobytes() + b'\r\n')
 
-# ===== ROUTES =====
+# ===== HTTP ROUTES =====
 
 @app.route('/')
 def index():
@@ -173,7 +173,7 @@ def index():
 
 @app.route('/remote')
 def remote():
-    """Serves the standalone Remote Lock Web app"""
+    """Serves the standalone Remote Lock Web application"""
     return send_from_directory('RemoteLockWeb', 'index.html')
 
 @app.route('/video_feed')
@@ -183,7 +183,7 @@ def video_feed():
 
 @app.route('/pir_trigger', methods=['POST'])
 def pir_trigger():
-    """ESP32 ye call karto jab PIR trigger hoto"""
+    """Handles PIR motion sensor trigger requests sent from ESP32"""
     global last_alert
     now = time.time()
     if door_locked and (now - last_alert) > COOLDOWN:
@@ -197,7 +197,7 @@ def pir_trigger():
 
 @app.route('/door_status', methods=['POST'])
 def door_status():
-    """ESP32 door status update karto"""
+    """Handles door lock status synchronization updates sent from ESP32"""
     global door_locked
     data = request.get_json(silent=True) or {}
     door_locked = data.get('locked', True)
@@ -206,7 +206,7 @@ def door_status():
 
 @app.route('/unlock_door', methods=['POST'])
 def unlock_door():
-    """Web UI varun manual unlock trigger karto"""
+    """Triggers manual door unlock from the web dashboard"""
     threading.Thread(target=trigger_auto_unlock, args=("Web Dashboard",), daemon=True).start()
     return jsonify({"status": "unlocking"})
 
