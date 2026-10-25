@@ -1,0 +1,10 @@
+{
+  "name": "Smart Door Remote",
+  "short_name": "Door Lock",
+  "description": "Remote control for IoT Smart Door Lock",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08090d",
+  "theme_color": "#08090d"
+}

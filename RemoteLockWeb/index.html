@@ -3,203 +3,630 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Door Lock - Remote Access</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0b10">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Smart Door Lock • Remote Access</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <style>
-        body {
-            background-color: #0f0f13;
-            color: #ffffff;
-            font-family: 'Inter', 'Segoe UI', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+        :root {
+            --bg-base: #08090d;
+            --surface-glass: rgba(22, 25, 35, 0.65);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --locked-primary: #ef4444;
+            --locked-glow: rgba(239, 68, 68, 0.35);
+            --unlocked-primary: #10b981;
+            --unlocked-glow: rgba(16, 185, 129, 0.35);
+            --text-primary: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 40px;
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(20px);
-            text-align: center;
-            width: 85%;
-            max-width: 350px;
-        }
-
-        h1 {
-            margin-top: 0;
-            margin-bottom: 40px;
-            font-size: 22px;
-            font-weight: 500;
-            letter-spacing: 1px;
-            color: #e0e0e0;
-        }
-
-        .lock-btn {
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-            border: none;
-            outline: none;
-            font-size: 20px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.12) 0%, transparent 60%),
+                radial-gradient(circle at 80% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 0 auto;
-            position: relative;
+            padding: 20px;
+            overflow-x: hidden;
         }
 
-        .locked {
-            background: linear-gradient(135deg, #e53935, #b71c1c);
-            box-shadow: 0 10px 30px rgba(229, 57, 53, 0.4),
-                inset 0 2px 5px rgba(255, 255, 255, 0.3);
+        .container {
+            width: 100%;
+            max-width: 390px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        .unlocked {
-            background: linear-gradient(135deg, #43a047, #1b5e20);
-            box-shadow: 0 10px 30px rgba(67, 160, 71, 0.4),
-                inset 0 2px 5px rgba(255, 255, 255, 0.3);
+        /* Top Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 4px;
         }
 
-        .lock-btn:active {
-            transform: scale(0.9);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .status-text {
-            margin-top: 35px;
-            font-size: 15px;
-            color: #888;
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .brand-title {
+            font-size: 17px;
+            font-weight: 600;
             letter-spacing: 0.5px;
         }
 
-        .icon {
-            font-size: 50px;
-            margin-bottom: 15px;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        .device-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            backdrop-filter: blur(8px);
         }
 
-        /* Pulse Animation when checking status */
-        @keyframes pulse {
-            0% {
-                opacity: 0.6;
-            }
-
-            50% {
-                opacity: 1;
-            }
-
-            100% {
-                opacity: 0.6;
-            }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #64748b;
+            transition: all 0.3s ease;
         }
 
-        .loading {
-            animation: pulse 1.5s infinite;
+        .status-dot.online {
+            background-color: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-dot.offline {
+            background-color: #f59e0b;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.6; }
+        }
+
+        /* Main Glass Card */
+        .card {
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 28px;
+            padding: 36px 24px 28px 24px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+        }
+
+        /* Central Lock Button */
+        .btn-wrapper {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .glow-ring {
+            position: absolute;
+            top: -12px;
+            left: -12px;
+            right: -12px;
+            bottom: -12px;
+            border-radius: 50%;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: blur(16px);
+            opacity: 0.6;
+            z-index: 0;
+        }
+
+        .lock-btn {
+            position: relative;
+            z-index: 1;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            outline: none;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.2), 0 15px 35px rgba(0, 0, 0, 0.4);
+        }
+
+        .lock-btn:active {
+            transform: scale(0.93);
+        }
+
+        /* State Styles */
+        .state-locked .lock-btn {
+            background: linear-gradient(145deg, #ef4444, #b91c1c);
+        }
+        .state-locked .glow-ring {
+            background: var(--locked-glow);
+        }
+
+        .state-unlocked .lock-btn {
+            background: linear-gradient(145deg, #10b981, #047857);
+        }
+        .state-unlocked .glow-ring {
+            background: var(--unlocked-glow);
+        }
+
+        .btn-icon {
+            font-size: 52px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+            transition: transform 0.3s ease;
+        }
+
+        .btn-label {
+            font-size: 19px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .btn-sub {
+            font-size: 11px;
+            opacity: 0.8;
+            font-weight: 400;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Status Description */
+        .status-box {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .status-heading {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .status-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Action Buttons */
+        .actions-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .action-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            gap: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        .action-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .action-card:active {
+            transform: scale(0.96);
+        }
+
+        .action-card.full-width {
+            grid-column: span 2;
+        }
+
+        .action-icon {
+            font-size: 20px;
+        }
+
+        .action-text {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Spinner / Loading Animation */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 10px;
         }
     </style>
 </head>
 
 <body>
-    <div class="glass-panel">
-        <h1>REMOTE DOOR ACCESS</h1>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-icon">⚡</div>
+                <div class="brand-title">Smart Lock</div>
+            </div>
+            <div class="device-badge" id="deviceBadge" title="ESP32 hardware status">
+                <div class="status-dot" id="deviceDot"></div>
+                <span id="deviceText">Checking...</span>
+            </div>
+        </header>
 
-        <button id="lockBtn" class="lock-btn locked" onclick="toggleLock()">
-            <div id="btnIcon" class="icon">🔒</div>
-            <div id="btnText">LOCKED</div>
-        </button>
+        <!-- Main Controller Card -->
+        <main class="card state-locked" id="cardContainer">
+            <div class="btn-wrapper">
+                <div class="glow-ring"></div>
+                <button class="lock-btn" id="lockBtn" onclick="toggleLock()" aria-label="Toggle Door Lock">
+                    <span class="btn-icon" id="btnIcon">🔒</span>
+                    <span class="btn-label" id="btnText">LOCKED</span>
+                    <span class="btn-sub" id="btnSub">Tap to unlock</span>
+                </button>
+            </div>
 
-        <div class="status-text" id="statusText">Connecting to door...</div>
+            <div class="status-box">
+                <div class="status-heading" id="statusHeading">Door is Securely Locked</div>
+                <div class="status-desc" id="statusDesc">Last sync: --:--:--</div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="actions-grid">
+                <button class="action-card full-width" onclick="autoUnlockFiveSeconds()">
+                    <span class="action-icon">⏱️</span>
+                    <span class="action-text" id="autoUnlockBtnText">Temporary 5s Auto-Unlock</span>
+                </button>
+                <button class="action-card" onclick="fetchStatus(true)">
+                    <span class="action-icon">🔄</span>
+                    <span class="action-text">Refresh Status</span>
+                </button>
+                <button class="action-card" onclick="testConnection()">
+                    <span class="action-icon">📶</span>
+                    <span class="action-text">Ping ESP32</span>
+                </button>
+            </div>
+        </main>
+
+        <footer class="footer">
+            Blynk IoT Cloud • ESP32 Secure Control
+        </footer>
     </div>
 
+    <!-- Notification Toast -->
+    <div class="toast" id="toast">Command sent successfully</div>
+
     <script>
-        // Blynk Credentials
+        // Blynk Cloud Configuration
         const BLYNK_AUTH_TOKEN = "jaom-iUT1r94Dv-_6AT0mc5awAAfG_vS";
-        const PIN = "V1"; // Virtual Pin used for the door lock in your ESP32 code
+        const PIN = "V1"; // Virtual Pin 1 (0 = Unlocked, 1 = Locked)
 
-        let isLocked = true; // Default state assumed
+        let isLocked = true;
         let isUpdating = false;
+        let countdownTimer = null;
 
-        async function fetchStatus() {
-            if (isUpdating) return;
-
-            try {
-                // Blynk HTTP API to get datastream value
-                const response = await fetch(`https://blynk.cloud/external/api/get?token=${BLYNK_AUTH_TOKEN}&${PIN}`);
-                const data = await response.text();
-
-                // Note: Change the condition below based on how your ESP32 code works
-                // Usually 1 = Locked (ON), 0 = Unlocked (OFF)
-                isLocked = (data.trim() === "1");
-                updateUI();
-            } catch (error) {
-                document.getElementById("statusText").innerText = "Connection failed. Retrying...";
-                console.error("Fetch error:", error);
+        // Trigger light haptic vibration if supported on phone
+        function vibratePhone(pattern = [30]) {
+            if ("vibrate" in navigator) {
+                try { navigator.vibrate(pattern); } catch (e) {}
             }
         }
 
-        async function toggleLock() {
+        // Show toast notification
+        function showToast(msg, icon = "✓") {
+            const toast = document.getElementById("toast");
+            toast.innerHTML = `<span>${icon}</span> <span>${msg}</span>`;
+            toast.classList.add("show");
+            setTimeout(() => toast.classList.remove("show"), 2500);
+        }
+
+        // Fetch current lock status from Blynk
+        async function fetchStatus(isManual = false) {
             if (isUpdating) return;
-            isUpdating = true;
-
-            // Toggle the state
-            isLocked = !isLocked;
-            const newValue = isLocked ? 1 : 0;
-
-            // Update UI instantly for responsiveness
-            updateUI();
-            document.getElementById("statusText").innerText = "Sending command...";
-            document.getElementById("lockBtn").classList.add("loading");
 
             try {
-                // Blynk HTTP API to update datastream value
-                await fetch(`https://blynk.cloud/external/api/update?token=${BLYNK_AUTH_TOKEN}&${PIN}=${newValue}`);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-                document.getElementById("statusText").innerText = isLocked ? "Door is securely locked" : "Door is unlocked";
+                const response = await fetch(`https://blynk.cloud/external/api/get?token=${BLYNK_AUTH_TOKEN}&${PIN}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.text();
+                // 1 = Locked, 0 = Unlocked
+                isLocked = (data.trim() === "1");
+                updateUI();
+
+                const now = new Date();
+                document.getElementById("statusDesc").innerText = `Synced at ${now.toLocaleTimeString()}`;
+
+                if (isManual) {
+                    showToast("Status refreshed");
+                    vibratePhone([20]);
+                }
             } catch (error) {
-                document.getElementById("statusText").innerText = "Failed to send command";
-                // Revert state if failed
-                isLocked = !isLocked;
+                console.error("fetchStatus error:", error);
+                document.getElementById("statusDesc").innerText = "Sync failed. Retrying...";
+                if (isManual) showToast("Connection failed", "⚠️");
+            }
+
+            // Also check hardware connection status
+            checkHardwareStatus();
+        }
+
+        // Check if ESP32 hardware is connected
+        async function checkHardwareStatus() {
+            try {
+                const response = await fetch(`https://blynk.cloud/external/api/isHardwareConnected?token=${BLYNK_AUTH_TOKEN}`);
+                if (response.ok) {
+                    const isOnline = (await response.text()).trim() === "true";
+                    const dot = document.getElementById("deviceDot");
+                    const text = document.getElementById("deviceText");
+
+                    if (isOnline) {
+                        dot.className = "status-dot online";
+                        text.innerText = "ESP32 Online";
+                    } else {
+                        dot.className = "status-dot offline";
+                        text.innerText = "ESP32 Offline";
+                    }
+                }
+            } catch (e) {
+                console.warn("Hardware status check error:", e);
+            }
+        }
+
+        // Toggle permanent lock state
+        async function toggleLock() {
+            if (isUpdating) return;
+            vibratePhone([40]);
+
+            isUpdating = true;
+            const targetState = !isLocked;
+            const newValue = targetState ? 1 : 0;
+
+            const btnText = document.getElementById("btnText");
+            const btnSub = document.getElementById("btnSub");
+            const statusHeading = document.getElementById("statusHeading");
+
+            btnSub.innerHTML = '<span class="spinner"></span> Transmitting...';
+            statusHeading.innerText = targetState ? "Locking door..." : "Unlocking door...";
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+                const response = await fetch(`https://blynk.cloud/external/api/update?token=${BLYNK_AUTH_TOKEN}&${PIN}=${newValue}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                isLocked = targetState;
+                updateUI();
+                vibratePhone([30, 50, 30]);
+                showToast(isLocked ? "Door locked securely" : "Door unlocked successfully", isLocked ? "🔒" : "🔓");
+            } catch (error) {
+                console.error("toggleLock error:", error);
+                showToast("Failed to send command. Check connection.", "⚠️");
+                vibratePhone([80, 80]);
                 updateUI();
             } finally {
                 isUpdating = false;
-                document.getElementById("lockBtn").classList.remove("loading");
             }
         }
 
+        // Auto-unlock for 5 seconds and then automatically re-lock
+        async function autoUnlockFiveSeconds() {
+            if (isUpdating) return;
+            vibratePhone([40]);
+
+            const autoBtnText = document.getElementById("autoUnlockBtnText");
+            isUpdating = true;
+            autoBtnText.innerHTML = '<span class="spinner"></span> Unlocking...';
+
+            try {
+                // 1. Send Unlock command (0)
+                const unlockRes = await fetch(`https://blynk.cloud/external/api/update?token=${BLYNK_AUTH_TOKEN}&${PIN}=0`);
+                if (!unlockRes.ok) throw new Error("Unlock failed");
+
+                isLocked = false;
+                updateUI();
+                vibratePhone([30, 40]);
+                showToast("Door unlocked! Auto-relocking in 5s...", "🔓");
+
+                // 2. Countdown 5 seconds
+                let timeLeft = 5;
+                if (countdownTimer) clearInterval(countdownTimer);
+
+                countdownTimer = setInterval(async () => {
+                    timeLeft--;
+                    if (timeLeft > 0) {
+                        autoBtnText.innerText = `Auto-relocking in ${timeLeft}s...`;
+                    } else {
+                        clearInterval(countdownTimer);
+                        autoBtnText.innerHTML = '<span class="spinner"></span> Relocking...';
+
+                        try {
+                            // 3. Send Lock command (1)
+                            await fetch(`https://blynk.cloud/external/api/update?token=${BLYNK_AUTH_TOKEN}&${PIN}=1`);
+                            isLocked = true;
+                            updateUI();
+                            vibratePhone([40]);
+                            showToast("Door securely re-locked", "🔒");
+                        } catch (e) {
+                            showToast("Auto-relock failed! Please lock manually.", "⚠️");
+                        } finally {
+                            autoBtnText.innerText = "Temporary 5s Auto-Unlock";
+                            isUpdating = false;
+                        }
+                    }
+                }, 1000);
+
+            } catch (err) {
+                console.error("autoUnlock error:", err);
+                showToast("Failed to unlock. Check connection.", "⚠️");
+                autoBtnText.innerText = "Temporary 5s Auto-Unlock";
+                isUpdating = false;
+                updateUI();
+            }
+        }
+
+        // Test connection / Ping
+        async function testConnection() {
+            vibratePhone([20]);
+            showToast("Pinging Blynk Cloud...", "📶");
+            const t0 = performance.now();
+            try {
+                const res = await fetch(`https://blynk.cloud/external/api/isHardwareConnected?token=${BLYNK_AUTH_TOKEN}`);
+                const latency = Math.round(performance.now() - t0);
+                if (res.ok) {
+                    showToast(`Blynk Cloud reached in ${latency}ms`, "⚡");
+                    checkHardwareStatus();
+                } else {
+                    showToast("Blynk response error", "⚠️");
+                }
+            } catch (e) {
+                showToast("Network unreachable", "❌");
+            }
+        }
+
+        // Update UI elements based on current lock state
         function updateUI() {
-            const btn = document.getElementById("lockBtn");
+            const container = document.getElementById("cardContainer");
             const btnIcon = document.getElementById("btnIcon");
             const btnText = document.getElementById("btnText");
-            const statusText = document.getElementById("statusText");
+            const btnSub = document.getElementById("btnSub");
+            const statusHeading = document.getElementById("statusHeading");
 
             if (isLocked) {
-                btn.className = "lock-btn locked";
+                container.className = "card state-locked";
                 btnIcon.innerText = "🔒";
                 btnText.innerText = "LOCKED";
-                if (!isUpdating) statusText.innerText = "Door is securely locked";
+                btnSub.innerText = "Tap to unlock";
+                statusHeading.innerText = "Door is Securely Locked";
             } else {
-                btn.className = "lock-btn unlocked";
+                container.className = "card state-unlocked";
                 btnIcon.innerText = "🔓";
                 btnText.innerText = "UNLOCKED";
-                if (!isUpdating) statusText.innerText = "Door is unlocked";
+                btnSub.innerText = "Tap to lock";
+                statusHeading.innerText = "Door is Unlocked";
             }
         }
 
-        // Fetch status initially
+        // Initialize and start background polling
         fetchStatus();
-
-        // Check door status every 3 seconds to keep UI synced if someone else operates from Blynk App
-        setInterval(fetchStatus, 3000);
+        setInterval(fetchStatus, 3500);
     </script>
 </body>
 

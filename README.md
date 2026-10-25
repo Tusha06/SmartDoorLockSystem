@@ -134,7 +134,28 @@ The server will start on `http://0.0.0.0:5000`.
   - View real-time webcam feed with face bounding boxes and names.
   - Check live door lock state.
   - Click **"🔓 Unlock Door"** to manually trigger an unlock.
-- **Remote Web Access**: Open [`RemoteLockWeb/index.html`](file:///d:/Doorlockweb/RemoteLockWeb/index.html) in any browser to toggle the lock directly over Blynk cloud.
+- **Remote Web Access**:
+  - Locally: `http://localhost:5000/remote` or open [`RemoteLockWeb/index.html`](file:///d:/Doorlockweb/RemoteLockWeb/index.html).
+  - Online Deployment: Deploy on **GitHub Pages**, **Vercel**, or **Netlify** to access from anywhere on your phone!
+
+---
+
+## 🌐 Deploying the Remote Lock Website
+
+The `RemoteLockWeb` dashboard is a lightweight, mobile-first Web App that directly connects to the Blynk Cloud API. You can deploy it for free:
+
+### Option 1: GitHub Pages (Automatic)
+A GitHub Actions workflow is included (`.github/workflows/deploy.yml`):
+1. In your GitHub repository, go to **Settings** > **Pages**.
+2. Under **Build and deployment** > **Source**, select **GitHub Actions**.
+3. Push to `main` branch. Your web app will automatically go live at:
+   `https://<your-username>.github.io/<repository-name>/`
+4. Open the link on your mobile phone and tap **"Add to Home Screen"** to use it like a native app.
+
+### Option 2: Vercel (1-Click)
+1. Go to [vercel.com](https://vercel.com) and import this repository.
+2. The included `vercel.json` will automatically route to `RemoteLockWeb`.
+3. Click **Deploy**.
 
 ---
 

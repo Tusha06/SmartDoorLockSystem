@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response, jsonify, request
+from flask import Flask, render_template, Response, jsonify, request, send_from_directory
 import cv2
 import face_recognition
 import numpy as np
@@ -170,6 +170,11 @@ def generate_frames():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/remote')
+def remote():
+    """Serves the standalone Remote Lock Web app"""
+    return send_from_directory('RemoteLockWeb', 'index.html')
 
 @app.route('/video_feed')
 def video_feed():
