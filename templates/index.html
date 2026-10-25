@@ -24,6 +24,12 @@
         .card-value { font-size: 22px; font-weight: 500; }
         .locked   { color: #e53935; }
         .unlocked { color: #43a047; }
+        .unlocking { color: #ffb300; }
+        .btn-unlock { margin-top: 14px; padding: 8px 16px; background: #1b5e20; color: #fff;
+                      border: 1px solid #43a047; border-radius: 8px; font-size: 13px;
+                      font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+        .btn-unlock:hover { background: #2e7d32; }
+        .btn-unlock:disabled { opacity: 0.5; cursor: not-allowed; }
         .faces-list { margin-top: 8px; }
         .face-pill { display: inline-block; background: #0d2137;
                      border: 1px solid #1976d2; color: #64b5f6;
@@ -39,7 +45,7 @@
 
     <div class="container">
         <div class="cam-box">
-            <div class="cam-title">Live Camera — Face Detection</div>
+            <div class="cam-title">Live Camera — Face Detection & Auto-Unlock</div>
             <img src="/video_feed">
         </div>
 
@@ -47,6 +53,7 @@
             <div class="card">
                 <div class="card-title">Door Status</div>
                 <div class="card-value" id="door-status">Loading...</div>
+                <button id="unlock-btn" class="btn-unlock" onclick="manualUnlock()">🔓 Unlock Door</button>
             </div>
             <div class="card">
                 <div class="card-title">Known Faces</div>
@@ -56,13 +63,39 @@
     </div>
 
     <script>
+        function manualUnlock() {
+            const btn = document.getElementById('unlock-btn');
+            btn.disabled = true;
+            btn.textContent = 'Unlocking...';
+            fetch('/unlock_door', { method: 'POST' })
+                .then(r => r.json())
+                .then(() => {
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.textContent = '🔓 Unlock Door';
+                    }, 5000);
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.textContent = '🔓 Unlock Door';
+                });
+        }
+
         function updateStatus() {
             fetch('/get_status')
                 .then(r => r.json())
                 .then(data => {
                     const el = document.getElementById('door-status');
-                    el.textContent = data.door_locked ? 'Locked' : 'Unlocked';
-                    el.className = 'card-value ' + (data.door_locked ? 'locked' : 'unlocked');
+                    if (data.is_unlocking) {
+                        el.textContent = 'Unlocking...';
+                        el.className = 'card-value unlocking';
+                    } else if (data.door_locked) {
+                        el.textContent = 'Locked';
+                        el.className = 'card-value locked';
+                    } else {
+                        el.textContent = 'Unlocked';
+                        el.className = 'card-value unlocked';
+                    }
 
                     const fl = document.getElementById('faces-list');
                     fl.innerHTML = data.known_faces.map(n =>

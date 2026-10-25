@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response, jsonify
+from flask import Flask, render_template, Response, jsonify, request
 import cv2
 import face_recognition
 import numpy as np
@@ -6,13 +6,19 @@ import os
 import requests
 from datetime import datetime
 import threading
+import time
 
 app = Flask(__name__)
 
 # ===== TUMCHI DETAILS ITHEY BHARA =====
-TELEGRAM_TOKEN = "8975226283:AAHvIK8BnZb7X1Bzov2EVnnZGBv71QyL5aI"
-CHAT_ID        = "1748309903"
-KNOWN_FACES_DIR = "known_faces"
+TELEGRAM_TOKEN    = "8975226283:AAHvIK8BnZb7X1Bzov2EVnnZGBv71QyL5aI"
+CHAT_ID           = "1748309903"
+KNOWN_FACES_DIR   = "known_faces"
+BLYNK_AUTH_TOKEN  = "jaom-iUT1r94Dv-_6AT0mc5awAAfG_vS"
+BLYNK_PIN         = "V1"  # Virtual Pin for door lock (0 = Unlocked, 1 = Locked)
+AUTO_RELOCK_DELAY = 5     # Door auto re-locks after 5 seconds
+UNLOCK_COOLDOWN   = 15    # Cooldown before next auto-unlock trigger (seconds)
+COOLDOWN          = 15    # Telegram alert cooldown for unknown faces (seconds)
 # =======================================
 
 # Known faces load karo
@@ -35,11 +41,12 @@ for filename in os.listdir(KNOWN_FACES_DIR):
 
 print(f"Total known faces: {len(known_names)}")
 
-# Webcam
-camera     = cv2.VideoCapture(0)
-door_locked = True
-last_alert  = 0
-COOLDOWN    = 15  # seconds
+# Webcam & Lock States
+camera       = cv2.VideoCapture(0)
+door_locked  = True
+last_alert   = 0
+last_unlock  = 0
+is_unlocking = False
 
 def send_telegram_photo(image, message):
     """Telegram var photo pathvto"""
@@ -47,14 +54,59 @@ def send_telegram_photo(image, message):
         _, buffer = cv2.imencode('.jpg', image)
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
         requests.post(url, data={"chat_id": CHAT_ID, "caption": message},
-                      files={"photo": ("photo.jpg", buffer.tobytes(), "image/jpeg")})
-        print("Telegram alert sent!")
+                      files={"photo": ("photo.jpg", buffer.tobytes(), "image/jpeg")},
+                      timeout=10)
+        print("Telegram photo alert sent!")
     except Exception as e:
-        print(f"Telegram error: {e}")
+        print(f"Telegram photo error: {e}")
+
+def send_telegram_message(message):
+    """Telegram var text message pathvto"""
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        requests.post(url, data={"chat_id": CHAT_ID, "text": message}, timeout=10)
+        print("Telegram text alert sent!")
+    except Exception as e:
+        print(f"Telegram text error: {e}")
+
+def trigger_auto_unlock(person_name, frame=None):
+    """Blynk API call karun door unlock karto aani nantar auto re-lock karto"""
+    global door_locked, is_unlocking
+    if is_unlocking:
+        return
+    is_unlocking = True
+    try:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Recognized {person_name}! Sending UNLOCK command to Blynk...")
+        # 1. Unlock door (0 = Unlocked)
+        url_unlock = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PIN}=0"
+        requests.get(url_unlock, timeout=5)
+        door_locked = False
+        print("Door UNLOCKED successfully!")
+
+        # Telegram notification
+        msg = f"Known face recognized: {person_name}!\nDoor UNLOCKED automatically.\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        if frame is not None:
+            threading.Thread(target=send_telegram_photo, args=(frame, msg), daemon=True).start()
+        else:
+            threading.Thread(target=send_telegram_message, args=(msg,), daemon=True).start()
+
+        # 2. Wait before re-locking
+        time.sleep(AUTO_RELOCK_DELAY)
+
+        # 3. Auto re-lock door (1 = Locked)
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Auto re-locking door...")
+        url_lock = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PIN}=1"
+        requests.get(url_lock, timeout=5)
+        door_locked = True
+        print("Door LOCKED securely!")
+    except Exception as e:
+        print(f"Error during auto door unlock: {e}")
+    finally:
+        is_unlocking = False
 
 def process_frame(frame):
     """Face detection aani recognition"""
-    global last_alert
+    global last_alert, last_unlock, is_unlocking
 
     # Resize for faster processing
     small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
@@ -83,13 +135,19 @@ def process_frame(frame):
         cv2.putText(frame, name, (left, top - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
-        # Alert logic
-        import time
+        # Alert & Auto-Unlock logic
         now = time.time()
-        if door_locked and name == "Unknown" and (now - last_alert) > COOLDOWN:
-            last_alert = now
-            msg = f"Unknown person detected at door!\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            threading.Thread(target=send_telegram_photo, args=(frame.copy(), msg)).start()
+        if name != "Unknown":
+            # Known face detected -> Trigger auto door unlock
+            if (now - last_unlock) > UNLOCK_COOLDOWN and not is_unlocking:
+                last_unlock = now
+                threading.Thread(target=trigger_auto_unlock, args=(name, frame.copy()), daemon=True).start()
+        else:
+            # Unknown person -> Send Telegram alert if door is locked
+            if door_locked and (now - last_alert) > COOLDOWN:
+                last_alert = now
+                msg = f"Unknown person detected at door!\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                threading.Thread(target=send_telegram_photo, args=(frame.copy(), msg), daemon=True).start()
 
     return frame
 
@@ -122,7 +180,6 @@ def video_feed():
 def pir_trigger():
     """ESP32 ye call karto jab PIR trigger hoto"""
     global last_alert
-    import time
     now = time.time()
     if door_locked and (now - last_alert) > COOLDOWN:
         last_alert = now
@@ -130,23 +187,29 @@ def pir_trigger():
         if success:
             frame = process_frame(frame)
             msg = f"Motion detected! Door is locked.\n{datetime.now().strftime('%H:%M:%S')}"
-            threading.Thread(target=send_telegram_photo, args=(frame.copy(), msg)).start()
+            threading.Thread(target=send_telegram_photo, args=(frame.copy(), msg), daemon=True).start()
     return jsonify({"status": "ok"})
 
 @app.route('/door_status', methods=['POST'])
 def door_status():
     """ESP32 door status update karto"""
     global door_locked
-    from flask import request
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     door_locked = data.get('locked', True)
     print(f"Door status: {'Locked' if door_locked else 'Unlocked'}")
     return jsonify({"status": "ok"})
+
+@app.route('/unlock_door', methods=['POST'])
+def unlock_door():
+    """Web UI varun manual unlock trigger karto"""
+    threading.Thread(target=trigger_auto_unlock, args=("Web Dashboard",), daemon=True).start()
+    return jsonify({"status": "unlocking"})
 
 @app.route('/get_status')
 def get_status():
     return jsonify({
         "door_locked": door_locked,
+        "is_unlocking": is_unlocking,
         "known_faces": known_names
     })
 
