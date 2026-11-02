@@ -405,7 +405,7 @@
     <script>
         // Blynk Cloud Configuration
         const BLYNK_AUTH_TOKEN = "jaom-iUT1r94Dv-_6AT0mc5awAAfG_vS";
-        const PIN = "V1"; // Virtual Pin 1 (0 = Unlocked, 1 = Locked)
+        const PIN = "V1"; // Virtual Pin 1 (0 = Locked, 1 = Unlocked)
 
         let isLocked = true;
         let isUpdating = false;
@@ -441,9 +441,10 @@
 
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                const data = await response.text();
-                // 1 = Locked, 0 = Unlocked
-                isLocked = (data.trim() === "1");
+                const raw = (await response.text()).trim();
+                const val = raw.replace(/[\[\]"']/g, '').trim();
+                // 0 = Locked, 1 = Unlocked
+                isLocked = (val === "0");
                 updateUI();
 
                 const now = new Date();
@@ -492,7 +493,8 @@
 
             isUpdating = true;
             const targetState = !isLocked;
-            const newValue = targetState ? 1 : 0;
+            // 0 = Locked, 1 = Unlocked
+            const newValue = targetState ? 0 : 1;
 
             const btnText = document.getElementById("btnText");
             const btnSub = document.getElementById("btnSub");
@@ -536,8 +538,8 @@
             autoBtnText.innerHTML = '<span class="spinner"></span> Unlocking...';
 
             try {
-                // 1. Send Unlock command (0)
-                const unlockRes = await fetch(`https://blynk.cloud/external/api/update?token=${BLYNK_AUTH_TOKEN}&${PIN}=0`);
+                // 1. Send Unlock command (1 = Unlocked)
+                const unlockRes = await fetch(`https://blynk.cloud/external/api/update?token=${BLYNK_AUTH_TOKEN}&${PIN}=1`);
                 if (!unlockRes.ok) throw new Error("Unlock failed");
 
                 isLocked = false;
@@ -558,8 +560,8 @@
                         autoBtnText.innerHTML = '<span class="spinner"></span> Relocking...';
 
                         try {
-                            // 3. Send Lock command (1)
-                            await fetch(`https://blynk.cloud/external/api/update?token=${BLYNK_AUTH_TOKEN}&${PIN}=1`);
+                            // 3. Send Lock command (0 = Locked)
+                            await fetch(`https://blynk.cloud/external/api/update?token=${BLYNK_AUTH_TOKEN}&${PIN}=0`);
                             isLocked = true;
                             updateUI();
                             vibratePhone([40]);

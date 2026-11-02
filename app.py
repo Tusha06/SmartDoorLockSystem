@@ -15,7 +15,7 @@ TELEGRAM_TOKEN    = "8975226283:AAHvIK8BnZb7X1Bzov2EVnnZGBv71QyL5aI"
 CHAT_ID           = "1748309903"
 KNOWN_FACES_DIR   = "known_faces"
 BLYNK_AUTH_TOKEN  = "jaom-iUT1r94Dv-_6AT0mc5awAAfG_vS"
-BLYNK_PIN         = "V1"  # Virtual Pin for door lock (0 = Unlocked, 1 = Locked)
+BLYNK_PIN         = "V1"  # Virtual Pin for door lock (0 = Locked, 1 = Unlocked)
 AUTO_RELOCK_DELAY = 5     # Door auto re-locks after 5 seconds
 UNLOCK_COOLDOWN   = 15    # Cooldown before next auto-unlock trigger (seconds)
 COOLDOWN          = 15    # Telegram alert cooldown for unknown faces (seconds)
@@ -77,8 +77,8 @@ def trigger_auto_unlock(person_name, frame=None):
     is_unlocking = True
     try:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Recognized {person_name}! Sending UNLOCK command to Blynk...")
-        # 1. Send unlock command to Blynk (0 = Unlocked)
-        url_unlock = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PIN}=0"
+        # 1. Send unlock command to Blynk (1 = Unlocked)
+        url_unlock = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PIN}=1"
         requests.get(url_unlock, timeout=5)
         door_locked = False
         print("Door UNLOCKED successfully!")
@@ -93,9 +93,9 @@ def trigger_auto_unlock(person_name, frame=None):
         # 2. Keep door unlocked for preset delay
         time.sleep(AUTO_RELOCK_DELAY)
 
-        # 3. Send lock command to Blynk (1 = Locked)
+        # 3. Send lock command to Blynk (0 = Locked)
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Auto re-locking door...")
-        url_lock = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PIN}=1"
+        url_lock = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PIN}=0"
         requests.get(url_lock, timeout=5)
         door_locked = True
         print("Door LOCKED securely!")

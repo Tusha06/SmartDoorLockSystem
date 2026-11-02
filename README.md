@@ -121,7 +121,7 @@ CHAT_ID           = "YOUR_TELEGRAM_CHAT_ID"
 KNOWN_FACES_DIR   = "known_faces"
 
 BLYNK_AUTH_TOKEN  = "YOUR_BLYNK_AUTH_TOKEN"
-BLYNK_PIN         = "V1"     # Virtual Pin: 0 = Unlocked, 1 = Locked
+BLYNK_PIN         = "V1"     # Virtual Pin: 0 = Locked, 1 = Unlocked
 AUTO_RELOCK_DELAY = 5        # Auto re-lock duration in seconds
 UNLOCK_COOLDOWN   = 15       # Minimum seconds between auto-unlock triggers
 COOLDOWN          = 15       # Unknown visitor alert cooldown in seconds
