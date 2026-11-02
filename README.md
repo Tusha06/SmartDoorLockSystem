@@ -2,6 +2,9 @@
 
 An intelligent, IoT-enabled Smart Door Lock System featuring real-time AI face recognition, automatic door unlocking, intruder alerts via Telegram, ESP32 hardware integration, and a mobile-friendly remote web dashboard.
 
+> 📱 **Live Deployed Web App**: [**https://smartdoorlock-one.vercel.app**](https://smartdoorlock-one.vercel.app)  
+> Real-time remote door lock control with 5s auto-unlock, Blynk Cloud synchronization, and live ESP32 status.
+
 ---
 
 ## 🌟 Key Features
@@ -11,7 +14,7 @@ An intelligent, IoT-enabled Smart Door Lock System featuring real-time AI face r
 - **🚨 Telegram Intruder Alerts**: Automatically captures and dispatches a photo alert to your Telegram bot whenever an unknown visitor or motion is detected while the door is locked.
 - **🌐 Dual Web Dashboards**:
   - **Live Monitoring Dashboard** (`http://localhost:5000`): Live video feed, real-time lock status, authorized faces list, and manual unlock button.
-  - **Remote Lock Web App** (`RemoteLockWeb/index.html`): Mobile-friendly, glassmorphic Progressive Web App (PWA) that controls the door lock remotely via the Blynk IoT Cloud API.
+  - **Remote Lock Web App** ([smartdoorlock-one.vercel.app](https://smartdoorlock-one.vercel.app)): Mobile-friendly, glassmorphic Progressive Web App (PWA) that controls the door lock remotely via the Blynk IoT Cloud API.
 - **⚡ ESP32 Hardware Integration**:
   - Controls the physical door lock mechanism (solenoid/servo/relay).
   - Integrates PIR motion sensors to notify the PC camera when movement is detected.
@@ -145,8 +148,8 @@ The server will bind to `http://0.0.0.0:5000`.
   - View live lock status (`Locked`, `Unlocking...`, `Unlocked`).
   - Click **"🔓 Unlock Door"** to manually open the lock.
 - **Remote Lock Web App**:
-  - Locally: Navigate to `http://localhost:5000/remote` or open [`RemoteLockWeb/index.html`](file:///d:/Doorlockweb/RemoteLockWeb/index.html).
-  - Online: Access via GitHub Pages, Vercel, or Netlify from any mobile browser.
+  - **Live Deployed Web App**: [**https://smartdoorlock-one.vercel.app**](https://smartdoorlock-one.vercel.app) (Optimized for mobile browsers with PWA "Add to Home Screen" support).
+  - **Local Server**: Navigate to `http://localhost:5000/remote` or open [`RemoteLockWeb/index.html`](file:///d:/Doorlockweb/RemoteLockWeb/index.html).
 
 ---
 
@@ -166,28 +169,25 @@ The Flask application exposes the following endpoints:
 
 ---
 
-## 🌐 Deploying the Remote Lock Website
+## 🌐 Remote Lock Deployment & Live Links
 
-The `RemoteLockWeb` dashboard is a standalone, client-side web application that connects directly to the Blynk Cloud API. You can deploy it for free:
+The `RemoteLockWeb` dashboard is live and accessible online:
 
-### Option 1: GitHub Pages (Automated via Actions)
-A GitHub Actions workflow is included at `.github/workflows/deploy.yml`:
-1. In your GitHub repository, navigate to **Settings** > **Pages**.
-2. Under **Build and deployment** > **Source**, select **GitHub Actions**.
-3. Push changes to the `main` branch.
-4. Your website will automatically go live at:
-   `https://<your-username>.github.io/<repository-name>/`
-5. Open this link on your smartphone and select **"Add to Home Screen"** to use it as a native app.
+> 🔗 **Production Web App**: [**https://smartdoorlock-one.vercel.app**](https://smartdoorlock-one.vercel.app)
 
-### Option 2: Vercel (1-Click Deployment)
-1. Log in to [vercel.com](https://vercel.com) and import this repository.
-2. The included [`vercel.json`](file:///d:/Doorlockweb/vercel.json) will automatically route traffic to `RemoteLockWeb`.
-3. Click **Deploy**.
+The application is a standalone, client-side Progressive Web App (PWA) connecting directly to the Blynk Cloud API. Configurations for multiple hosting providers are pre-configured:
 
-### Option 3: Netlify
-1. Connect your repository to [netlify.com](https://netlify.com).
-2. The included [`netlify.toml`](file:///d:/Doorlockweb/netlify.toml) will publish the `RemoteLockWeb` folder.
-3. Click **Deploy**.
+### 1. Vercel (Active Production Deployment)
+- **Live URL**: [https://smartdoorlock-one.vercel.app](https://smartdoorlock-one.vercel.app)
+- Configured via [`vercel.json`](file:///d:/Doorlockweb/vercel.json) to automatically route all traffic to `RemoteLockWeb`.
+
+### 2. GitHub Pages (Automated via Actions)
+- Automated deployment workflow is configured at [`.github/workflows/deploy.yml`](file:///d:/Doorlockweb/.github/workflows/deploy.yml).
+- Under GitHub repository **Settings** > **Pages**, select **GitHub Actions** as the build source.
+- Live URL: `https://tusha06.github.io/SmartDoorLockSystem/`
+
+### 3. Netlify
+- Configured via [`netlify.toml`](file:///d:/Doorlockweb/netlify.toml) to publish the `RemoteLockWeb` directory.
 
 ---
 
@@ -204,7 +204,7 @@ Refer to [`esp32_code_snippets.txt`](file:///d:/Doorlockweb/esp32_code_snippets.
 2. **Core Functions**:
    - `notifyPC_PIR()`: Sends `POST /pir_trigger` to the PC server when the PIR sensor detects motion.
    - `notifyPC_DoorStatus(bool locked)`: Sends `POST /door_status` to synchronize state with the PC.
-   - `BLYNK_WRITE(V1)`: Handles lock and unlock signals received from the Blynk Cloud (`0` = Unlock, `1` = Lock).
+   - `BLYNK_WRITE(V1)`: Handles lock and unlock signals received from the Blynk Cloud (`0` = Lock, `1` = Unlock).
 
 ---
 
