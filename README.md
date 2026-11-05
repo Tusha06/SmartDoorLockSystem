@@ -125,6 +125,7 @@ KNOWN_FACES_DIR   = "known_faces"
 
 BLYNK_AUTH_TOKEN  = "YOUR_BLYNK_AUTH_TOKEN"
 BLYNK_PIN         = "V1"     # Virtual Pin: 0 = Locked, 1 = Unlocked
+BLYNK_PHOTO_PIN   = "V2"     # Virtual Pin: Alert Photo URL for Remote Web
 AUTO_RELOCK_DELAY = 5        # Auto re-lock duration in seconds
 UNLOCK_COOLDOWN   = 15       # Minimum seconds between auto-unlock triggers
 COOLDOWN          = 15       # Unknown visitor alert cooldown in seconds

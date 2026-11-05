@@ -16,6 +16,7 @@ CHAT_ID           = "1748309903"
 KNOWN_FACES_DIR   = "known_faces"
 BLYNK_AUTH_TOKEN  = "jaom-iUT1r94Dv-_6AT0mc5awAAfG_vS"
 BLYNK_PIN         = "V1"  # Virtual Pin for door lock (0 = Locked, 1 = Unlocked)
+BLYNK_PHOTO_PIN   = "V2"  # Virtual Pin for alert photo URL
 AUTO_RELOCK_DELAY = 5     # Door auto re-locks after 5 seconds
 UNLOCK_COOLDOWN   = 15    # Cooldown before next auto-unlock trigger (seconds)
 COOLDOWN          = 15    # Telegram alert cooldown for unknown faces (seconds)
@@ -42,21 +43,42 @@ for filename in os.listdir(KNOWN_FACES_DIR):
 print(f"Total known faces: {len(known_names)}")
 
 # Camera & Lock State Management
-camera       = cv2.VideoCapture(0)
-door_locked  = True
-last_alert   = 0
-last_unlock  = 0
-is_unlocking = False
+camera                    = cv2.VideoCapture(0)
+door_locked               = True
+last_alert                = 0
+last_unlock               = 0
+is_unlocking              = False
+latest_intruder_photo_url = None
+latest_intruder_timestamp = None
 
-def send_telegram_photo(image, message):
-    """Sends a captured image to Telegram with a text caption"""
+def send_telegram_photo(image, message, sync_blynk=True):
+    """Sends a captured image to Telegram and syncs direct photo URL to Blynk V2 for Remote Web"""
+    global latest_intruder_photo_url, latest_intruder_timestamp
     try:
         _, buffer = cv2.imencode('.jpg', image)
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
-        requests.post(url, data={"chat_id": CHAT_ID, "caption": message},
-                      files={"photo": ("photo.jpg", buffer.tobytes(), "image/jpeg")},
-                      timeout=10)
+        res = requests.post(url, data={"chat_id": CHAT_ID, "caption": message},
+                            files={"photo": ("photo.jpg", buffer.tobytes(), "image/jpeg")},
+                            timeout=10)
         print("Telegram photo alert sent!")
+
+        if sync_blynk:
+            data = res.json()
+            if data.get("ok"):
+                photos = data.get("result", {}).get("photo", [])
+                if photos:
+                    file_id = photos[-1]["file_id"]
+                    file_res = requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getFile?file_id={file_id}", timeout=5).json()
+                    if file_res.get("ok"):
+                        file_path = file_res["result"]["file_path"]
+                        photo_url = f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}"
+                        latest_intruder_photo_url = photo_url
+                        latest_intruder_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                        # Send photo URL to Blynk V2 for Vercel Remote Web App
+                        blynk_photo_url = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PHOTO_PIN}={photo_url}"
+                        requests.get(blynk_photo_url, timeout=5)
+                        print(f"Synced alert photo to Blynk {BLYNK_PHOTO_PIN} for Remote Web!")
     except Exception as e:
         print(f"Telegram photo error: {e}")
 
@@ -215,7 +237,9 @@ def get_status():
     return jsonify({
         "door_locked": door_locked,
         "is_unlocking": is_unlocking,
-        "known_faces": known_names
+        "known_faces": known_names,
+        "latest_intruder_photo_url": latest_intruder_photo_url,
+        "latest_intruder_timestamp": latest_intruder_timestamp
     })
 
 if __name__ == '__main__':
