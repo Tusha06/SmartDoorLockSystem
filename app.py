@@ -50,17 +50,18 @@ last_unlock               = 0
 is_unlocking              = False
 latest_intruder_photo_url = None
 latest_intruder_timestamp = None
+latest_person_name        = None
 
-def send_telegram_photo(image, message, sync_blynk=True):
+def send_telegram_photo(image, message, sync_blynk=True, person_name="Unknown"):
     """Sends a captured image to Telegram and syncs direct photo URL to Blynk V2 for Remote Web"""
-    global latest_intruder_photo_url, latest_intruder_timestamp
+    global latest_intruder_photo_url, latest_intruder_timestamp, latest_person_name
     try:
         _, buffer = cv2.imencode('.jpg', image)
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
         res = requests.post(url, data={"chat_id": CHAT_ID, "caption": message},
                             files={"photo": ("photo.jpg", buffer.tobytes(), "image/jpeg")},
                             timeout=10)
-        print("Telegram photo alert sent!")
+        print(f"Telegram photo alert sent for: {person_name}")
 
         if sync_blynk:
             data = res.json()
@@ -71,14 +72,16 @@ def send_telegram_photo(image, message, sync_blynk=True):
                     file_res = requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getFile?file_id={file_id}", timeout=5).json()
                     if file_res.get("ok"):
                         file_path = file_res["result"]["file_path"]
-                        photo_url = f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}"
-                        latest_intruder_photo_url = photo_url
+                        base_photo_url = f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}"
+                        photo_url_with_info = f"{base_photo_url}#{person_name}"
+                        latest_intruder_photo_url = base_photo_url
+                        latest_person_name = person_name
                         latest_intruder_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                        # Send photo URL to Blynk V2 for Vercel Remote Web App
-                        blynk_photo_url = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PHOTO_PIN}={photo_url}"
+                        # Send photo URL + person name to Blynk V2 for Vercel Remote Web App
+                        blynk_photo_url = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&{BLYNK_PHOTO_PIN}={photo_url_with_info}"
                         requests.get(blynk_photo_url, timeout=5)
-                        print(f"Synced alert photo to Blynk {BLYNK_PHOTO_PIN} for Remote Web!")
+                        print(f"Synced last visitor ({person_name}) photo to Blynk {BLYNK_PHOTO_PIN} for Remote Web!")
     except Exception as e:
         print(f"Telegram photo error: {e}")
 
@@ -105,10 +108,10 @@ def trigger_auto_unlock(person_name, frame=None):
         door_locked = False
         print("Door UNLOCKED successfully!")
 
-        # Send Telegram notification
+        # Send Telegram notification and sync photo to Remote Web
         msg = f"Known face recognized: {person_name}!\nDoor UNLOCKED automatically.\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         if frame is not None:
-            threading.Thread(target=send_telegram_photo, args=(frame, msg), daemon=True).start()
+            threading.Thread(target=send_telegram_photo, args=(frame, msg, True, person_name), daemon=True).start()
         else:
             threading.Thread(target=send_telegram_message, args=(msg,), daemon=True).start()
 
@@ -169,7 +172,7 @@ def process_frame(frame):
             if door_locked and (now - last_alert) > COOLDOWN:
                 last_alert = now
                 msg = f"Unknown person detected at door!\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                threading.Thread(target=send_telegram_photo, args=(frame.copy(), msg), daemon=True).start()
+                threading.Thread(target=send_telegram_photo, args=(frame.copy(), msg, True, "Unknown"), daemon=True).start()
 
     return frame
 
@@ -238,6 +241,7 @@ def get_status():
         "door_locked": door_locked,
         "is_unlocking": is_unlocking,
         "known_faces": known_names,
+        "latest_person_name": latest_person_name,
         "latest_intruder_photo_url": latest_intruder_photo_url,
         "latest_intruder_timestamp": latest_intruder_timestamp
     })

@@ -59,6 +59,17 @@
                 <div class="card-title">Known Faces</div>
                 <div class="faces-list" id="faces-list">Loading...</div>
             </div>
+            <div class="card" id="last-person-card" style="grid-column: span 2; display: none;">
+                <div class="card-title">Last Person Detected on Camera</div>
+                <div style="display: flex; gap: 16px; align-items: center; margin-top: 10px;">
+                    <img id="last-person-img" src="" style="width: 140px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #2a3a5a;">
+                    <div>
+                        <div id="last-person-name" style="font-size: 18px; font-weight: bold; color: #fff;">--</div>
+                        <div id="last-person-time" style="font-size: 12px; color: #8899aa; margin-top: 4px;">--</div>
+                        <div id="last-person-status" style="font-size: 12px; color: #43a047; margin-top: 6px;">Telegram Alert Dispatched ✓</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -100,6 +111,23 @@
                     const fl = document.getElementById('faces-list');
                     fl.innerHTML = data.known_faces.map(n =>
                         `<span class="face-pill">${n}</span>`).join('');
+
+                    if (data.latest_intruder_photo_url) {
+                        const lCard = document.getElementById('last-person-card');
+                        const lImg = document.getElementById('last-person-img');
+                        const lName = document.getElementById('last-person-name');
+                        const lTime = document.getElementById('last-person-time');
+                        const lStatus = document.getElementById('last-person-status');
+                        
+                        lImg.src = data.latest_intruder_photo_url;
+                        const isUnknown = (data.latest_person_name === 'Unknown' || !data.latest_person_name);
+                        lName.innerText = isUnknown ? '⚠️ Unknown Person' : `👤 Recognized: ${data.latest_person_name}`;
+                        lName.style.color = isUnknown ? '#e53935' : '#43a047';
+                        lTime.innerText = `Captured: ${data.latest_intruder_timestamp || 'Just now'}`;
+                        lStatus.innerText = isUnknown ? '🚨 Alert Sent to Telegram' : '🔓 Door Auto-Unlocked';
+                        lStatus.style.color = isUnknown ? '#ffb300' : '#43a047';
+                        lCard.style.display = 'block';
+                    }
                 });
         }
         setInterval(updateStatus, 2000);

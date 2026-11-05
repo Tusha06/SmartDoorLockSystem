@@ -358,22 +358,33 @@
             }
         }
 
-        /* Intruder Alert Card */
+        /* Last Person / Visitor Alert Card */
         .alert-card {
             background: var(--surface-glass);
-            border: 1px solid rgba(239, 68, 68, 0.35);
+            border: 1px solid var(--border-glass);
             border-left: 5px solid var(--locked-primary);
             border-radius: 24px;
             padding: 20px;
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            box-shadow: 0 20px 40px rgba(239, 68, 68, 0.15), 0 10px 25px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             display: none;
             flex-direction: column;
             gap: 12px;
             animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .alert-card.state-unknown {
+            border-left-color: var(--locked-primary);
+            box-shadow: 0 15px 35px rgba(239, 68, 68, 0.2);
+        }
+
+        .alert-card.state-known {
+            border-left-color: var(--unlocked-primary);
+            box-shadow: 0 15px 35px rgba(16, 185, 129, 0.2);
         }
 
         @keyframes slideDown {
@@ -391,14 +402,24 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid rgba(239, 68, 68, 0.4);
-            color: #fca5a5;
             padding: 4px 10px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+
+        .alert-badge.badge-unknown {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+        }
+
+        .alert-badge.badge-known {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #6ee7b7;
         }
 
         .alert-dot {
@@ -458,7 +479,7 @@
             color: #60a5fa;
             font-weight: 500;
             display: flex;
-            align-items: gap;
+            align-items: center;
             gap: 5px;
         }
 
@@ -579,26 +600,26 @@
 
         <!-- Dashboard Layout (Responsive 2-col on desktop, stacked on mobile) -->
         <div class="dashboard-layout" id="dashboardLayout">
-            <!-- Intruder / Unknown Person Alert Card -->
+            <!-- Last Person on Camera / Visitor Card -->
             <section class="alert-card" id="visitorAlertCard" aria-live="polite">
                 <div class="alert-header">
-                    <div class="alert-badge">
-                        <div class="alert-dot"></div>
-                        <span>VISITOR DETECTED</span>
+                    <div class="alert-badge badge-unknown" id="visitorBadge">
+                        <div class="alert-dot" id="visitorBadgeDot"></div>
+                        <span id="visitorBadgeText">LAST VISITOR</span>
                     </div>
                     <span class="alert-time" id="alertTimestamp">Just now</span>
                 </div>
 
                 <div class="photo-wrapper" onclick="openPhotoModal()" title="Click to view full photo">
-                    <img id="intruderPhotoImg" src="" alt="Unknown Person Captured">
+                    <img id="intruderPhotoImg" src="" alt="Last Person Captured on Camera">
                     <div class="telegram-pill">
-                        <span class="telegram-status">✈️ Telegram Alert</span>
-                        <span class="telegram-check">Delivered ✓</span>
+                        <span class="telegram-status" id="visitorStatusText">✈️ Telegram Alert Dispatched</span>
+                        <span class="telegram-check">Live ✓</span>
                     </div>
                 </div>
 
                 <div class="alert-actions">
-                    <button class="btn-alert-unlock" onclick="autoUnlockFiveSeconds()">
+                    <button class="btn-alert-unlock" id="btnAlertQuickUnlock" onclick="autoUnlockFiveSeconds()">
                         <span>🔓</span> Quick Unlock 5s
                     </button>
                     <button class="btn-alert-dismiss" onclick="dismissPhotoAlert()">
@@ -636,10 +657,6 @@
                     <button class="action-card" onclick="testConnection()">
                         <span class="action-icon">📶</span>
                         <span class="action-text">Ping ESP32</span>
-                    </button>
-                    <button class="action-card full-width" style="opacity: 0.7; font-size: 12px; padding: 10px; margin-top: 4px;" onclick="simulateAlertDemo()">
-                        <span class="action-icon">📸</span>
-                        <span class="action-text">Test Visitor Alert Preview</span>
                     </button>
                 </div>
             </main>
@@ -886,17 +903,48 @@
             }
         }
 
-        // Display photo alert in UI
-        function showPhotoAlert(url, timeStr = null) {
+        // Display last visitor/person photo in UI (only real captures)
+        function showPhotoAlert(rawUrl, timeStr = null) {
             const card = document.getElementById("visitorAlertCard");
             const img = document.getElementById("intruderPhotoImg");
             const timeEl = document.getElementById("alertTimestamp");
+            const badgeEl = document.getElementById("visitorBadgeText");
+            const dotEl = document.getElementById("visitorBadgeDot");
+            const statusEl = document.getElementById("visitorStatusText");
+            const unlockBtn = document.getElementById("btnAlertQuickUnlock");
 
-            img.src = url;
+            const parts = rawUrl.split('#');
+            const cleanUrl = parts[0];
+            const personName = parts[1] ? decodeURIComponent(parts[1]) : "Unknown";
+
+            img.src = cleanUrl;
             const now = new Date();
             timeEl.innerText = timeStr || now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            if (personName.toLowerCase() === "unknown") {
+                card.className = "alert-card state-unknown";
+                if (badgeEl) badgeEl.innerText = "UNKNOWN VISITOR";
+                if (badgeEl && badgeEl.parentElement) badgeEl.parentElement.className = "alert-badge badge-unknown";
+                if (dotEl) dotEl.style.backgroundColor = "#ef4444";
+                if (statusEl) statusEl.innerText = "🚨 Telegram Alert Dispatched";
+                if (unlockBtn) {
+                    unlockBtn.style.display = "flex";
+                    unlockBtn.innerHTML = "<span>🔓</span> Quick Unlock 5s";
+                }
+            } else {
+                card.className = "alert-card state-known";
+                if (badgeEl) badgeEl.innerText = `RECOGNIZED: ${personName.toUpperCase()}`;
+                if (badgeEl && badgeEl.parentElement) badgeEl.parentElement.className = "alert-badge badge-known";
+                if (dotEl) dotEl.style.backgroundColor = "#10b981";
+                if (statusEl) statusEl.innerText = "👤 Authorized Face Recognized";
+                if (unlockBtn) {
+                    unlockBtn.style.display = "flex";
+                    unlockBtn.innerHTML = "<span>🔓</span> Unlock Again (5s)";
+                }
+            }
+
             card.style.display = "flex";
-            vibratePhone([60, 40, 60]);
+            vibratePhone([50, 30, 50]);
         }
 
         // Dismiss the alert card
@@ -904,7 +952,7 @@
             const card = document.getElementById("visitorAlertCard");
             card.style.display = "none";
             alertDismissedFor = lastKnownPhoto;
-            showToast("Alert dismissed", "ℹ️");
+            showToast("Card dismissed", "ℹ️");
         }
 
         // Open full-screen photo modal
@@ -922,12 +970,6 @@
         function closePhotoModal() {
             const modal = document.getElementById("photoModal");
             if (modal) modal.classList.remove("open");
-        }
-
-        // Demo preview simulation
-        function simulateAlertDemo() {
-            showPhotoAlert("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80");
-            showToast("Demo alert displayed", "📸");
         }
 
         // Update UI elements based on current lock state
